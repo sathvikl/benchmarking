@@ -14,3 +14,7 @@
 * 12 - web tooling benchmark
 * 13 - dc eis pre footprint
 * 14 - dc eis post footprint
+* 15 - Ghostjs latency
+* 16 - Ghostjs throughput
+* 17 - Ghostjs pre footprint
+* 18 - Ghostjs post footprint
