@@ -1,9 +1,9 @@
 {
- "benchid": 7,
- "name": "acmeair footprint before load[lower is better]" ,
+ "benchid": 11,
+ "name": "node-dc-eis Ops/s[higher is better]" ,
  "template": "../common/common_template1.html.base",
- "units": "kb",
- "outputBase" : "acmeair_prefootprint",
+ "units": "ops/s",
+ "outputBase" : "dceis_throughput",
  "streams": [ {"streamid": 1, "name": "master", "color": "blue" },
               {"streamid": 2, "name": "4.x", "color": "red" },
               {"streamid": 4, "name": "6.x", "color": "DarkMagenta" },
