@@ -1,5 +1,10 @@
 #!/bin/bash  
 
+if [ -z $1 ]; then
+  echo -e "download-ab.sh <path to resource directory>"
+  exit
+fi
+
 resource_dir=$1
 
 mkdir -p $resource_dir/apache2-utils/
