@@ -2,14 +2,14 @@
 #shopt -s -o nounset
 
 
-
 function usage() {
-  echo "USAGE:"
+  echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload> <timeout (Optional)>"
   echo "Currently this script will run Ghost.js and mysql container, with the affinities as follows:"
   echo "Node : $(echo ${NODE_AFFINITY})"
   echo "MySQL : $(echo ${MYSQL_AFFINITY})"
   echo "Client : $(echo ${AB_AFFINITY})"
 }
+
 
 function mandatory() {
   if [ -z "${!1}" ]; then
@@ -70,12 +70,19 @@ function archive_files() {
 
 function on_exit()
 {
-    echo "Caught kill"
-    stop_client
+    if [[ -z $EXIT_STATUS ]]; then
+	   echo "Clean Exit\n"
+	   echo "Exit Status: $EXIT_STATUS\n"
+	else
+	   echo "Caught kill"
+	   echo "Exit Status: $EXIT_STATUS\n"
+	fi
+	stop_client
     stop_node_process
     stop_mysql_server_container
     archive_files
-    exit ${EXIT_STATUS}
+    kill $PID_timeout_monitor_function
+	exit ${EXIT_STATUS}
 }
 
 function timestamp()
@@ -117,7 +124,6 @@ function check_node_app_status() {
   TOTAL_SLEEP=0
   while true
   do
-    #x=`grep "Ghost is running in production" $RESULTSLOG`
     node_program_name="$NODE $NODE_FILE"
     PID_NODE_SERVER=$(pgrep -f "${node_program_name}")
     if [ "x${PID_NODE_SERVER}" != "x" ]; then
@@ -174,7 +180,8 @@ function start_mysql_docker_server() {
   echo -e "Run start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file" | tee -a $RESULTSLOG
   
   . ./docker-mysql-start.sh 
-  `start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file` 2>&1 | tee -a $LOGFILE
+  docker_out=$(`start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file`) 2>&1 | tee -a $LOGFILE
+  echo -e $docker_out 2>&1 | tee -a $LOGFILE
   
   if (exec sudo docker exec $mysql_container_name bash -c "service mysql status" | grep -i -e "MYSQL .* is running"); then
       echo -e "Docker mysql container created successfully" | tee -a $RESULTSLOG
@@ -192,7 +199,11 @@ function start_nodeapp_server() {
 
     # wait until npm install is done
     pushd ${GHOSTJS_DIR}
-    #npm install 2>&1 | tee -a $RESULTSLOG
+    # This script will check the version of Ghost.js being executed
+	# It will run yarn install or npm install 
+	# add yarn and npm to the $PATH variable for this session
+	export PATH="$PATH:$RESOURCE_DIR"
+    ./update_gscan_for_node8.sh 2>&1 | tee -a $RESULTSLOG
     popd 
   (   
     pushd ${GHOSTJS_DIR}
@@ -222,11 +233,24 @@ function start_client() {
 }
 
 # VARIABLE SECTION
+#these may need changing when we find out more about the machine we're running on
+NODE_AFFINITY="numactl --physcpubind=0,4"
+# docker container needs only the cpu number(s)
+MYSQL_AFFINITY="1,5"
+AB_AFFINITY="numactl --physcpubind=2,6"
+
+if [[ "$#" -lt 2 ]]; then
+   usage
+   exit
+fi
 
 start=`date +%s`
 #set locations so we don't end up with lots of hard coded bits throughout script
 RESOURCE_DIR=$1  ### This is where mysql binary is located
 WORKLOAD_DIR=$2  
+if [[ "$#" -eq 3 ]]; then
+   test_timeout=$3
+fi
 REL_DIR=$(dirname $0)
 ROOT_DIR=`cd "${REL_DIR}/.."; pwd`
 echo "ROOT_DIR=${ROOT_DIR}"
@@ -234,6 +258,7 @@ SCRIPT_DIR=${ROOT_DIR}/ghost-bench
 GHOSTJS_DIR=${WORKLOAD_DIR}/ghostjs-repo/
 ghostjs_mysql_dump_file="$GHOSTJS_DIR/../ghost-db.mysql"
 BENCHMARK_RQST_COUNT=2000
+DRIVER_URL="http://127.0.0.1:8013/new-world-record-with-apache-spark/"
 
 EXIT_STATUS=0
 
@@ -252,19 +277,11 @@ optional RESULTSDIR ${ROOT_DIR}/results
 export LOGDIR_TEMP=$RESULTSDIR/temp
 mkdir -p $LOGDIR_TEMP
 
-optional TIMEOUT 30
 CUR_DATE=$(timestamp)
 RESULTSLOG=$LOGDIR_TEMP/$TEST_NAME.log
 SUMLOG=$LOGDIR_TEMP/score_summary.txt
 SERVER_CPU_STAT_FILE=$LOGDIR_TEMP/server_cpu.txt
 ARCHIVE_DIR=$RESULTSDIR/$CUR_DATE
-DRIVER_URL="http://127.0.0.1:8013/new-world-record-with-apache-spark/"
-
-#these may need changing when we find out more about the machine we're running on
-NODE_AFFINITY="numactl --physcpubind=0,4"
-# docker container needs only the cpu number(s)
-MYSQL_AFFINITY="1,5"
-AB_AFFINITY="numactl --physcpubind=2,6"
 
 optional DRIVERHOST
 optional NODE_APP_MODE "production"
@@ -274,6 +291,7 @@ optional CLUSTER_MODE_NODE_FILE cluster-index.js
 optional PORT 8013
 optional DRIVERCMD ${RESOURCE_DIR}/ab
 optional DRIVERNO 25
+optional test_timeout 600 
 
 NODE_SERVER=$(hostname -s)
 echo -e "RESULTSDIR: $RESULTSDIR"
@@ -284,7 +302,17 @@ echo -e "PORT: $PORT"
 echo -e "NETWORKTYPE: $NETWORKTYPE"
 echo -e "DRIVERCMD: $DRIVERCMD"
 echo -e "DRIVERNO: $DRIVERNO\n"
+echo -e "TIME OUT FOR THE TEST (seconds): $test_timeout\n"
 
+function monitor_timeout() {
+   sleep $test_timeout
+   EXIT_STATUS=1
+   on_exit
+}
+
+# Pass the PID of this bash script
+monitor_timeout "$$" &
+PID_timeout_monitor_function=$!
 
 DRIVER_COMMAND="$AB_AFFINITY $DRIVERCMD"
 # END VARIABLE SECTION
@@ -377,7 +405,6 @@ echo "Elapsed time in sec(s): $elapsed"
 
 echo "Done."
 EXIT_STATUS=0
-
 # Clean up on_exit() function
 on_exit
 
