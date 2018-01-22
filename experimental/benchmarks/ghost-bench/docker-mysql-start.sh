@@ -1,7 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
 # add check to delete the container using the port
 # add check for container run 
-function start_mysql_container() {
+start_mysql_container() {
     local container_name=$1
     local mysql_dumpfile=$3 
     local cpu_assign=$2
@@ -28,6 +28,13 @@ function start_mysql_container() {
     # earlier versions of docker, take a lot longer to start
     sleep 60
 
+    if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
+        echo -e "$container_name was started\n"
+    else
+        echo 1; return 1;
+    fi 
+
+    echo -e "## Creating the MySQL database: ghost_db in the container $container_name..\n"
     sudo docker exec -i $container_name bash -c 'cat > ghost_db.mysql' < $mysql_dumpfile 
 
     sudo docker exec  $container_name bash -c 'mysql -u root -ptestdb -e  "GRANT ALL PRIVILEGES ON *.* TO \"testuser\"@\"%\" IDENTIFIED BY \"testpass\""'
