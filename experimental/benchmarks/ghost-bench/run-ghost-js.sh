@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #shopt -s -o nounset
 
 
@@ -6,54 +6,54 @@ function usage() {
   echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload> <timeout (Optional)>"
   echo "Currently this script will run Ghost.js and mysql container, with the affinities as follows:"
   echo "Node : $(echo ${NODE_AFFINITY})"
-  echo "MySQL : $(echo ${MYSQL_AFFINITY})"
+  echo "MySQL : $(echo docker --cpuset-cpus=${MYSQL_AFFINITY})"
   echo "Client : $(echo ${AB_AFFINITY})"
 }
 
 
 function mandatory() {
   if [ -z "${!1}" ]; then
-    echo "${1} not set"
-    usage
-    exit 1
+  echo "${1} not set"
+  usage
+  exit 1
   fi
 }
 
 function optional() {
   if [ -z "${!1}" ]; then
-    echo -n "${1} not set (ok)"
-    if [ -n "${2}" ]; then
-      echo -n ", default is: ${2}"
-      export ${1}="${2}"
-    fi
-    echo ""
+  echo -n "${1} not set (ok)"
+  if [ -n "${2}" ]; then
+    echo -n ", default is: ${2}"
+    export ${1}="${2}"
+  fi
+  echo ""
   fi
 }
 
 function remove(){
   if [ -f $1 ]; then
-    rm $1
+  rm $1
   fi
 }
 
 function stop_node_process() {
-    echo -e "\n## STOPPING NODE PROCESS ##"
-    case ${PLATFORM} in
-      Linux)
-        bash ${SCRIPT_DIR}/kill_node_linux $RESULTSLOG
-        ;;
-    esac
+  echo -e "\n## STOPPING NODE PROCESS ##"
+  case ${PLATFORM} in
+    Linux)
+    bash ${SCRIPT_DIR}/kill_node_linux $RESULTSLOG
+    ;;
+  esac
 }
 
 function stop_client() {
-    echo -e "\n## STOPPING CLIENT PROCESS ##"
-    pkill $DRIVERCMD 
+  echo -e "\n## STOPPING CLIENT PROCESS ##"
+  pkill $DRIVERCMD 
 }
 
 function stop_mysql_server_container() {
   echo -e "\n## STOPPING MYSQLDB container service ##"
   echo -e "docker-mysql-stop will execute"
-  . ./docker-mysql-stop.sh 
+  . $SCRIPT_DIR/docker-mysql-stop.sh 
   killed_container_name=`stop_mysql_container $mysql_container_name` 2>&1 | tee -a $RESULTSLOG
 }
 
@@ -70,19 +70,19 @@ function archive_files() {
 
 function on_exit()
 {
-    if [[ -z $EXIT_STATUS ]]; then
-	   echo "Clean Exit\n"
-	   echo "Exit Status: $EXIT_STATUS\n"
-	else
-	   echo "Caught kill"
-	   echo "Exit Status: $EXIT_STATUS\n"
-	fi
-	stop_client
-    stop_node_process
-    stop_mysql_server_container
-    archive_files
-    kill $PID_timeout_monitor_function
-	exit ${EXIT_STATUS}
+  if [[ -z $EXIT_STATUS ]]; then
+   echo "Clean Exit\n"
+    echo "Exit Status: $EXIT_STATUS\n"
+   else
+    echo "Caught kill"
+    echo "Exit Status: $EXIT_STATUS\n"
+   fi
+   stop_client
+  stop_node_process
+  stop_mysql_server_container
+  archive_files
+  kill $PID_timeout_monitor_function
+  exit ${EXIT_STATUS}
 }
 
 function timestamp()
@@ -95,23 +95,23 @@ trap on_exit SIGINT SIGQUIT SIGTERM
 # Utility functions
 function hugepages_stats() {
   case ${PLATFORM} in
-    Linux)
-      HPPRETOTAL=`cat /proc/meminfo | grep HugePages_Total | sed 's/HugePages.*: *//g' | head -n 1`
-      HPPREFREE=`cat /proc/meminfo | grep HugePages_Free | sed 's/HugePages.*: *//g' | head -n 2|tail -n 1`
-      let HPPREINUSE=$HPPRETOTAL-$HPPREFREE
-      echo "HP IN USE : " ${HPPREINUSE}
-      ;;
+  Linux)
+    HPPRETOTAL=`cat /proc/meminfo | grep HugePages_Total | sed 's/HugePages.*: *//g' | head -n 1`
+    HPPREFREE=`cat /proc/meminfo | grep HugePages_Free | sed 's/HugePages.*: *//g' | head -n 2|tail -n 1`
+    let HPPREINUSE=$HPPRETOTAL-$HPPREFREE
+    echo "HP IN USE : " ${HPPREINUSE}
+    ;;
   esac
 }
 
 # Check Node binary exists and it's version
 function check_if_node_exists() {
   if [ -z $NODE ]; then
-    NODE=`which node`
+  NODE=`which node`
   else
-    echo "ERROR: Could not find a 'node' executable. Please set the NODE environment variable or update the PATH."
-    echo "node is not here: $NODE"
-    exit 1
+  echo "ERROR: Could not find a 'node' executable. Please set the NODE environment variable or update the PATH."
+  echo "node is not here: $NODE"
+  exit 1
   fi
   echo -e "NODE VERSION:"
   $NODE --version
@@ -125,18 +125,18 @@ function check_node_app_status() {
   TOTAL_SLEEP=0
   while true
   do
-    node_program_name="$NODE $NODE_FILE"
-    PID_NODE_SERVER=$(pgrep -f "${node_program_name}")
-    if [ "x${PID_NODE_SERVER}" != "x" ]; then
-      break
-    fi
-    TOTAL_SLEEP=`expr $TOTAL_SLEEP + $MIN_SLEEP`
-    if [ $TOTAL_SLEEP -ge $NODEAPP_START_THRESHOLD ]; then
-      echo "Exceeded nodeapp start time. [default: $NODEAPP_START_THRESHOLD secs]. Exit the run"
-      EXIT_STATUS=1
-      on_exit
-    fi
-    sleep $MIN_SLEEP
+  node_program_name="$NODE $NODE_FILE"
+  PID_NODE_SERVER=$(pgrep -f "${node_program_name}")
+  if [ "x${PID_NODE_SERVER}" != "x" ]; then
+    break
+  fi
+  TOTAL_SLEEP=`expr $TOTAL_SLEEP + $MIN_SLEEP`
+  if [ $TOTAL_SLEEP -ge $NODEAPP_START_THRESHOLD ]; then
+    echo "Exceeded nodeapp start time. [default: $NODEAPP_START_THRESHOLD secs]. Exit the run"
+    EXIT_STATUS=1
+    on_exit
+  fi
+  sleep $MIN_SLEEP
   done
   echo "Server started ..."
 }
@@ -160,17 +160,17 @@ function check_if_client_finished() {
   CLIENT_STATUS="success"
   while true
   do 
-    x=`grep "Percentage of the requests served within a certain time" $RESULTSLOG`
+  x=`grep "Percentage of the requests served within a certain time" $RESULTSLOG`
+  if [ "x${x}" != "x" ]; then
+    break
+  else
+    x=`grep "apr_socket_recv: Connection refused" $RESULTSLOG`
     if [ "x${x}" != "x" ]; then
-      break
-    else
-      x=`grep "apr_socket_recv: Connection refused" $RESULTSLOG`
-      if [ "x${x}" != "x" ]; then
-        CLIENT_STATUS="failed"
-        break
-      fi
+    CLIENT_STATUS="failed"
+    break
     fi
-    sleep 2
+  fi
+  sleep 2
   done
   echo "Client finished: (${CLIENT_STATUS})"
 }
@@ -180,14 +180,14 @@ function start_mysql_docker_server() {
   echo -e "\n## STARTING MYSQLDB container instance ##" 2>&1 | tee -a $RESULTSLOG
   echo -e "Run start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file" | tee -a $RESULTSLOG
   
-  . ./docker-mysql-start.sh 
+  . $SCRIPT_DIR/docker-mysql-start.sh 
   container_return=$(start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file)
   
   if (exec sudo docker exec $mysql_container_name bash -c "service mysql status" | grep -i -e "MYSQL .* is running"); then
-      echo -e "Docker mysql container created successfully" | tee -a $RESULTSLOG
+  echo -e "Docker mysql container created successfully" | tee -a $RESULTSLOG
   else
-      echo -e "Error: Failed to create MySQL container $mysql_container_name"
-	  exit 1
+  echo -e "Error: Failed to create MySQL container $mysql_container_name"
+  exit 1
   fi
 }
 
@@ -197,14 +197,15 @@ function start_nodeapp_server() {
   echo -e "NODE_ENV=$NODE_APP_MODE $CPUAFFINITY $NODE_APP_CMD" 2>&1 | tee -a $LOGFILE
   echo -e "## BEGIN TEST ##\n" 2>&1 | tee -a $LOGFILE
 
-    # wait until npm install is done
+  # wait until npm install is done
+  (
     pushd ${GHOSTJS_DIR}
     # This script will check the version of Ghost.js being executed
-	# It will run yarn install or npm install 
-	# add yarn and npm to the $PATH variable for this session
-	export PATH="$PATH:$RESOURCE_DIR"
-    ./update_gscan_for_node8.sh 2>&1 | tee -a $RESULTSLOG
-    popd 
+    # It will run yarn install or npm install 
+    # add yarn and npm to the $PATH variable for this session
+    ./update_gscan_for_node8.sh $RESOURCE_DIR 2>&1 | tee -a $RESULTSLOG
+    popd
+  ) 
   (   
     pushd ${GHOSTJS_DIR}
     echo GHOST_NODE_VERSION_CHECK=false NODE_ENV=$NODE_APP_MODE $CPUAFFINITY $NODE_APP_CMD
@@ -233,33 +234,61 @@ function start_client() {
 }
 
 function check_pre_requisite() {
-    #check if benchmarking utility ab exists in resource directory or $PATH
-	if [[  -z `which ab` ]] && [[ ! -e "$1/ab" ]]; then
-       echo -e "benchmarking utility ab does not exist. Please install ab\n" 2>&1 | tee -a $RESULTSLOG
-	   exit 1
-    fi
+  local resource_dir=$1 
+  ghost_version=`grep -A 1 "\"name\": \"ghost\"" ${WORKLOAD_DIR}/ghostjs-repo/package.json | grep version | awk {'print $2'} | cut -d, -f1`
+  echo -e "Ghost Version used: $ghost_version"  
 
-    # Check if docker is installed and the service is running. 
-	# docker service can fail for a variety of reasons, so don't try to start/stop the service here in this script. 
-	if [[ -z `which docker` ]]; then
-       echo -e "Please install docker\n" 2>&1 | tee -a $RESULTSLOG
-	   exit 1
-    elif  [[ -z $(sudo service docker status | grep -E "docker.*active|docker.*start\/running") ]]; then
-	   echo -e "Please start docker daemon service\n" 2>&1 | tee -a $RESULTSLOG
-	   exit 1
-	fi
-	
-    check_if_node_exists
-    echo -e "## Pre-Requiste check passed ##"
-    echo -e "## Docker service is running ##"
-    echo -e "## ab utility is available ##"
-    
+  #check if benchmarking utility ab exists in resource directory or $PATH
+  if [[  -z `which ab` ]] && [[ ! -e $DRIVERCMD ]]; then
+    echo -e "benchmarking utility ab does not exist. Please install ab\n" 2>&1 | tee -a $RESULTSLOG
+    exit 1
+  elif [[ -n `which ab` ]]; then
+    DRIVERCMD=`which ab`
+  fi
+  
+  # check if yarn exists, since it's needed when Ghost-1.17 is used. 
+  if [[  -z `which yarn` ]] && [[ ! -e $resource_dir/yarn ]] && [[ "$ghost_version" = "\"1.17.1\"" ]]; then
+    echo -e "yarn utility does not exist. Please install yarn\n" 2>&1 | tee -a $RESULTSLOG
+    exit 1
+  elif [[ -e $resource_dir/yarn-v1.3.2/bin/yarn ]]; then
+    export PATH="$PATH:$resource_dir/yarn-v1.3.2/bin"
+    export YARN=`which yarn`
+  elif [[  -n `which yarn` ]]; then
+    export YARN=`which yarn`
+  fi
+
+  # check if npm exists, since it's needed when Ghost-0.11.7 is used. 
+  if [[  -z `which npm` ]] && [[ ! -e $resource_dir/npm ]] && [[ "$ghost_version" = "\"0.11.7\"" ]]; then
+    echo -e "node npm utility does not exist. Please install npm\n" 2>&1 | tee -a $RESULTSLOG
+    exit 1
+  elif [[  -n `which npm` ]]; then
+    export NPM=`which npm`
+  elif [[ -e $resource_dir/npm ]]; then
+    export NPM="$resource_dir/npm"
+  fi
+  
+  # Check if docker is installed and the service is running. 
+  # docker service can fail for a variety of reasons, so don't try to start/stop the service here in this script. 
+  if [[ -z `which docker` ]]; then
+    echo -e "Please install docker\n" 2>&1 | tee -a $RESULTSLOG
+    exit 1
+  elif  [[ -z $(sudo service docker status | grep -E ".*active \(running\)|.*start\/running") ]]; then
+    echo -e "Please start docker daemon service\n" 2>&1 | tee -a $RESULTSLOG
+    exit 1
+  fi
+  
+  echo -e "## NPM bin: $NPM"  
+  echo -e "## YARN bin: $YARN"  
+  check_if_node_exists
+  echo -e "## Pre-Requiste check passed ##"
+  echo -e "## Docker service is running ##"
+  echo -e "## ab utility is available ##" 
 }
 
 function monitor_timeout() {
-   sleep $test_timeout
-   EXIT_STATUS=1
-   on_exit
+  sleep $test_timeout
+  EXIT_STATUS=1
+  on_exit
 }
 
 # VARIABLE SECTION
@@ -270,18 +299,16 @@ MYSQL_AFFINITY="1,5"
 AB_AFFINITY="numactl --physcpubind=2,6"
 
 if [[ "$#" -lt 2 ]]; then
-   usage
-   exit
+  usage
+  exit
 fi
-
-check_pre_requisite $1
 
 start=`date +%s`
 #set locations so we don't end up with lots of hard coded bits throughout script
-RESOURCE_DIR=$1  ### This is where mysql binary is located
-WORKLOAD_DIR=$2  
+RESOURCE_DIR=`readlink -f $1`  ### This is where binarires like ab, yarn, npm are located
+WORKLOAD_DIR=`readlink -f $2`  
 if [[ "$#" -eq 3 ]]; then
-   test_timeout=$3
+  test_timeout=$3
 fi
 REL_DIR=$(dirname $0)
 ROOT_DIR=`cd "${REL_DIR}/.."; pwd`
@@ -292,6 +319,7 @@ ghostjs_mysql_dump_file="$GHOSTJS_DIR/../ghost-db.mysql"
 BENCHMARK_RQST_COUNT=2000
 DRIVER_URL="http://127.0.0.1:8013/new-world-record-with-apache-spark/"
 
+check_pre_requisite $RESOURCE_DIR
 EXIT_STATUS=0
 
 # define variables

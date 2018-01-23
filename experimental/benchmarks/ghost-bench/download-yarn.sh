@@ -6,7 +6,5 @@ if [ -z $1 ]; then
 fi
 
 cd $1
-wget https://yarnpkg.com/latest.tar.gz
-tar zvxf latest.tar.gz
-
-cp yarn-v1.3.2/bin/* $1/. 
+wget https://github.com/yarnpkg/yarn/releases/download/v1.3.2/yarn-v1.3.2.tar.gz
+tar xzf yarn-v1.3.2.tar.gz
