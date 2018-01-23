@@ -5,6 +5,12 @@ if [ -z $1 ]; then
   exit
 fi
 
+if [[ -z $YARN_VERSION ]]; then
+  export YARN_VERSION="v1.3.2"
+else
+  echo -e "Using Yarn version from YARN_VERSION: yarn-$YARN_VERSION"
+fi
+
 cd $1
-wget https://github.com/yarnpkg/yarn/releases/download/v1.3.2/yarn-v1.3.2.tar.gz
-tar xzf yarn-v1.3.2.tar.gz
+wget https://github.com/yarnpkg/yarn/releases/download/$YARN_VERSION/yarn-$YARN_VERSION.tar.gz
+tar xzf yarn-$YARN_VERSION.tar.gz

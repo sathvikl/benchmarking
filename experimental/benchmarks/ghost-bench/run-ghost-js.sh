@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #shopt -s -o nounset
 
 
@@ -235,6 +235,14 @@ function start_client() {
 
 function check_pre_requisite() {
   local resource_dir=$1 
+  
+  if [[ -z $YARN_VERSION ]]; then
+    export YARN_VERSION="v1.3.2"
+  else
+    echo -e "Using Yarn version: yarn-$YARN_VERSION"
+  fi
+
+  local yarn_dir_name="yarn-$YARN_VERSION"
   ghost_version=`grep -A 1 "\"name\": \"ghost\"" ${WORKLOAD_DIR}/ghostjs-repo/package.json | grep version | awk {'print $2'} | cut -d, -f1`
   echo -e "Ghost Version used: $ghost_version"  
 
@@ -247,11 +255,11 @@ function check_pre_requisite() {
   fi
   
   # check if yarn exists, since it's needed when Ghost-1.17 is used. 
-  if [[  -z `which yarn` ]] && [[ ! -e $resource_dir/yarn ]] && [[ "$ghost_version" = "\"1.17.1\"" ]]; then
+  if [[  -z `which yarn` ]] && [[ ! -e $resource_dir/$yarn_dir_name/bin/yarn ]] && [[ "$ghost_version" = "\"1.17.1\"" ]]; then
     echo -e "yarn utility does not exist. Please install yarn\n" 2>&1 | tee -a $RESULTSLOG
     exit 1
-  elif [[ -e $resource_dir/yarn-v1.3.2/bin/yarn ]]; then
-    export PATH="$PATH:$resource_dir/yarn-v1.3.2/bin"
+  elif [[ -e $resource_dir/$yarn_dir_name/bin/yarn ]]; then
+    export PATH="$PATH:$resource_dir/$yarn_dir_name/bin"
     export YARN=`which yarn`
   elif [[  -n `which yarn` ]]; then
     export YARN=`which yarn`
