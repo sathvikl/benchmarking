@@ -23,9 +23,15 @@ start_mysql_container() {
     fi
     
     sudo docker run --cpuset-cpus=$cpu_assign -p 3306:3306 --name=$container_name --env="MYSQL_ROOT_PASSWORD=testdb" -d mysql
-
+    if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
+        echo -e "Docker: $container_name created..\n"  
+    else
+	    return 0;
+	fi 
+    
     # wait for the container to start the mysql daemon, 
     # earlier versions of docker, take a lot longer to start
+    echo -e "## wait for 60 seconds for the MySQL daemon within the container to start...\n" 
     sleep 60
 
     if [[ -n $(sudo docker ps | grep $container_name) ]]; then 

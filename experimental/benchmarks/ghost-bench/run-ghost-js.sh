@@ -40,7 +40,7 @@ function stop_node_process() {
     echo -e "\n## STOPPING NODE PROCESS ##"
     case ${PLATFORM} in
       Linux)
-        bash ${SCRIPT_DIR}/kill_node_linux
+        bash ${SCRIPT_DIR}/kill_node_linux $RESULTSLOG
         ;;
     esac
 }
@@ -115,6 +115,7 @@ function check_if_node_exists() {
   fi
   echo -e "NODE VERSION:"
   $NODE --version
+  return 0
 }
 
 # Start node.js application server
@@ -180,8 +181,7 @@ function start_mysql_docker_server() {
   echo -e "Run start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file" | tee -a $RESULTSLOG
   
   . ./docker-mysql-start.sh 
-  docker_out=$(`start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file`) 2>&1 | tee -a $LOGFILE
-  echo -e $docker_out 2>&1 | tee -a $LOGFILE
+  container_return=$(start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file)
   
   if (exec sudo docker exec $mysql_container_name bash -c "service mysql status" | grep -i -e "MYSQL .* is running"); then
       echo -e "Docker mysql container created successfully" | tee -a $RESULTSLOG
@@ -232,6 +232,36 @@ function start_client() {
   fi
 }
 
+function check_pre_requisite() {
+    #check if benchmarking utility ab exists in resource directory or $PATH
+	if [[  -z `which ab` ]] && [[ ! -e "$1/ab" ]]; then
+       echo -e "benchmarking utility ab does not exist. Please install ab\n" 2>&1 | tee -a $RESULTSLOG
+	   exit 1
+    fi
+
+    # Check if docker is installed and the service is running. 
+	# docker service can fail for a variety of reasons, so don't try to start/stop the service here in this script. 
+	if [[ -z `which docker` ]]; then
+       echo -e "Please install docker\n" 2>&1 | tee -a $RESULTSLOG
+	   exit 1
+    elif  [[ -z $(sudo service docker status | grep -E "docker.*active|docker.*start\/running") ]]; then
+	   echo -e "Please start docker daemon service\n" 2>&1 | tee -a $RESULTSLOG
+	   exit 1
+	fi
+	
+    check_if_node_exists
+    echo -e "## Pre-Requiste check passed ##"
+    echo -e "## Docker service is running ##"
+    echo -e "## ab utility is available ##"
+    
+}
+
+function monitor_timeout() {
+   sleep $test_timeout
+   EXIT_STATUS=1
+   on_exit
+}
+
 # VARIABLE SECTION
 #these may need changing when we find out more about the machine we're running on
 NODE_AFFINITY="numactl --physcpubind=0,4"
@@ -243,6 +273,8 @@ if [[ "$#" -lt 2 ]]; then
    usage
    exit
 fi
+
+check_pre_requisite $1
 
 start=`date +%s`
 #set locations so we don't end up with lots of hard coded bits throughout script
@@ -304,16 +336,6 @@ echo -e "DRIVERCMD: $DRIVERCMD"
 echo -e "DRIVERNO: $DRIVERNO\n"
 echo -e "TIME OUT FOR THE TEST (seconds): $test_timeout\n"
 
-function monitor_timeout() {
-   sleep $test_timeout
-   EXIT_STATUS=1
-   on_exit
-}
-
-# Pass the PID of this bash script
-monitor_timeout "$$" &
-PID_timeout_monitor_function=$!
-
 DRIVER_COMMAND="$AB_AFFINITY $DRIVERCMD"
 # END VARIABLE SECTION
 
@@ -326,11 +348,13 @@ echo -e "Platform identified as: ${PLATFORM}\n"
 # Stop existing node processes if still running
 stop_node_process
 
-# Check if node executable exists
-check_if_node_exists
-
 # node execution command
 NODE_APP_CMD="$NODE_AFFINITY ${NODE} ${NODE_FILE}"
+
+# Pass the PID of this bash script
+monitor_timeout "$$" &
+PID_timeout_monitor_function=$!
+echo -e "PID of timeout monitoring process is: $PID_timeout_monitor_function"
 
 # Get hugepage information
 hugepages_stats
