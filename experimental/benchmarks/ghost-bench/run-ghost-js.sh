@@ -83,7 +83,7 @@ function on_exit()
   archive_files
   echo -e "Kill timeout monitor function with PID: $PID_timeout_monitor_function"  
   kill $PID_timeout_monitor_function
-  exit {$EXIT_STATUS} 
+  exit $EXIT_STATUS 
   echo -e "$SCRIPT exit completed"
 }
 

@@ -22,7 +22,7 @@ start_mysql_container() {
     return 0
   fi
   
-  sudo docker run --cpuset-cpus=$cpu_assign -p 3306:3306 --name=$container_name --env="MYSQL_ROOT_PASSWORD=testdb" -d mysql
+  sudo docker run --cpuset-cpus=$cpu_assign -p 3306:3306 --name=$container_name --env="MYSQL_ROOT_PASSWORD=testdb" -d mysql:5.7.21
   if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
     echo -e "Docker: $container_name created..\n"  
   else
