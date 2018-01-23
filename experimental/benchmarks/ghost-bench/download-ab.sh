@@ -5,7 +5,7 @@ if [ -z $1 ]; then
   exit
 fi
 
-resource_dir=$1
+resource_dir=`readlink -f $1`
 
 mkdir -p $resource_dir/apache2-utils/
 
