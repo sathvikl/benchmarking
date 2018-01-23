@@ -32,7 +32,7 @@ start_mysql_container() {
   # wait for the container to start the mysql daemon, 
   # earlier versions of docker, take a lot longer to start
   echo -e "## wait for 60 seconds for the MySQL daemon within the container to start...\n" 
-  sleep 60
+  sleep 20
 
   if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
     echo -e "$container_name was started\n"

@@ -71,18 +71,20 @@ function archive_files() {
 function on_exit()
 {
   if [[ -z $EXIT_STATUS ]]; then
-   echo "Clean Exit\n"
-    echo "Exit Status: $EXIT_STATUS\n"
-   else
+    echo "Clean Exit"
+    echo "Exit Status: $EXIT_STATUS"
+  else
     echo "Caught kill"
-    echo "Exit Status: $EXIT_STATUS\n"
-   fi
-   stop_client
+    echo "Exit Status: $EXIT_STATUS"
+  fi
+  stop_client
   stop_node_process
   stop_mysql_server_container
   archive_files
+  echo -e "Kill timeout monitor function with PID: $PID_timeout_monitor_function"  
   kill $PID_timeout_monitor_function
-  exit ${EXIT_STATUS}
+  exit {$EXIT_STATUS} 
+  echo -e "$SCRIPT exit completed"
 }
 
 function timestamp()
@@ -181,8 +183,9 @@ function start_mysql_docker_server() {
   echo -e "Run start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file" | tee -a $RESULTSLOG
   
   . $SCRIPT_DIR/docker-mysql-start.sh 
-  container_return=$(start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file)
+  container_return=$(start_mysql_container $mysql_container_name $MYSQL_AFFINITY $ghostjs_mysql_dump_file) 2>&1 | tee -a $RESULTSLOG
   
+ 
   if (exec sudo docker exec $mysql_container_name bash -c "service mysql status" | grep -i -e "MYSQL .* is running"); then
   echo -e "Docker mysql container created successfully" | tee -a $RESULTSLOG
   else
@@ -409,7 +412,7 @@ start_mysql_docker_server
 start_nodeapp_server
 
 # Adjust the time to sleep, on slower machines node might take longer to start-up
-# npm install is not suspended so that is taken into account
+# yarn/ npm install is not suspended so that is taken into account
 sleep 10
 
 # Get the memory footprint just before the run

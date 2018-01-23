@@ -9,7 +9,7 @@ if [ -n "$NODE_PIDS" ]; then
   echo "Killing: $NODE_PIDS" 2>&1 | tee -a $1
   kill $NODE_PIDS 2>&1 | tee -a $1
   cmd_status=${PIPESTATUS[0]} 
-  echo "`date`: Waiting 10s for Node to exit. kill CMD status: $cmd_status\n" 2>&1 | tee -a $1
+  echo "`date`: Waiting 10s for Node to exit. cmd kill $NODE_PIDS status: $cmd_status" 2>&1 | tee -a $1
   sleep 10
 fi
 
@@ -21,7 +21,7 @@ while [ -n "$NODE_PIDS" ]; do
   echo "Trying kill -9: $NODE_PIDS" 2>&1 | tee -a $1
   kill -9 $NODE_PIDS 2>&1 | tee -a $1
   cmd_status=${PIPESTATUS[0]} 
-  echo "`date`: Waiting 10s for Node to die. kill -9 CMD status: $cmd_status\n" 2>&1 | tee -a $1
+  echo "`date`: Waiting 10s for Node to die. cmd kill -9 $NODE_PIDS status: $cmd_status" 2>&1 | tee -a $1
   sleep 10
   NODE_PIDS=`ps -ef | grep '/node ' | grep -v 'grep' | awk '{print $2;}'`
 done
