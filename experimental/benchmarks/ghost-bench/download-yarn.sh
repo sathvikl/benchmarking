@@ -1,12 +1,10 @@
 #!/bin/bash 
 
-
 if [ -z $1 ]; then
   echo -e "$0 <path to resource directory>"
   exit
 fi
-
-$resource_dir=`readlink -f $1`
+resource_dir=`readlink -f $1`
 
 if [[ -z $YARN_VERSION ]]; then
   export YARN_VERSION="v1.3.2"
