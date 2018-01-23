@@ -236,6 +236,7 @@ function start_client() {
 function check_pre_requisite() {
   local resource_dir=$1 
   
+  # Check if the env variable YARN_VERSION is set. 
   if [[ -z $YARN_VERSION ]]; then
     export YARN_VERSION="v1.3.2"
   else
@@ -247,11 +248,13 @@ function check_pre_requisite() {
   echo -e "Ghost Version used: $ghost_version"  
 
   #check if benchmarking utility ab exists in resource directory or $PATH
-  if [[  -z `which ab` ]] && [[ ! -e $DRIVERCMD ]]; then
+  if [[ -z `which ab` ]] && [[ ! -e $resource_dir/ab ]]; then
     echo -e "benchmarking utility ab does not exist. Please install ab\n" 2>&1 | tee -a $RESULTSLOG
     exit 1
   elif [[ -n `which ab` ]]; then
     DRIVERCMD=`which ab`
+  elif [[ -e $resource_dir/ab ]]; then
+    DRIVERCMD="$resource_dir/ab"
   fi
   
   # check if yarn exists, since it's needed when Ghost-1.17 is used. 
@@ -272,6 +275,7 @@ function check_pre_requisite() {
   elif [[  -n `which npm` ]]; then
     export NPM=`which npm`
   elif [[ -e $resource_dir/npm ]]; then
+    export PATH="$PATH:$resource_dir"
     export NPM="$resource_dir/npm"
   fi
   
