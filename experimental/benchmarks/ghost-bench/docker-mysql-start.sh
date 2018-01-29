@@ -13,7 +13,7 @@ start_mysql_container() {
   fi
 
   #check if there is already a container using the port or the name
-  if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
+  if [[ -n $(sudo docker ps -a | grep $container_name) ]]; then 
     echo -e "$container_name already exists, deleting the image\n"
     sudo docker stop $container_name; sudo docker rm -v $container_name;  
   fi 

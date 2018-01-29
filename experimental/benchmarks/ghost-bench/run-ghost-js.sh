@@ -224,11 +224,13 @@ function start_nodeapp_server() {
 
 function start_client() {
   REQUEST_COUNT=$1
-  AB_RESULTSLOG=$2
-  echo -e "\n## DRIVER COMMAND ##" 2>&1 | tee -a $AB_RESULTSLOG
-  echo -e "$DRIVER_COMMAND -n $REQUEST_COUNT $DRIVER_URL" | tee -a $AB_RESULTSLOG
+  CON_COUNT=$2
+  AB_RESULTSLOG=$3
 
-  if (exec $DRIVER_COMMAND -n $REQUEST_COUNT $DRIVER_URL 2>&1 | tee -a ${AB_RESULTSLOG}) ; then
+  echo -e "\n## DRIVER COMMAND ##" 2>&1 | tee -a $AB_RESULTSLOG
+  echo -e "$DRIVER_COMMAND -c $CON_COUNT -n $REQUEST_COUNT $DRIVER_URL" | tee -a $AB_RESULTSLOG
+
+  if (exec $DRIVER_COMMAND -c $CON_COUNT -n $REQUEST_COUNT $DRIVER_URL 2>&1 | tee -a ${AB_RESULTSLOG}) ; then
    echo "Drivers have finished running" | tee -a $AB_RESULTSLOG
   else
    echo "ERROR: driver failed or killed" | tee -a $AB_RESULTSLOG
@@ -322,17 +324,24 @@ start=`date +%s`
 #set locations so we don't end up with lots of hard coded bits throughout script
 RESOURCE_DIR=`readlink -f $1`  ### This is where binarires like ab, yarn, npm are located
 WORKLOAD_DIR=`readlink -f $2`  
-if [[ "$#" -eq 3 ]]; then
+if [[ -n $3 ]]; then
   test_timeout=$3
 fi
+
+if [[ -n $4 ]]; then
+  BENCHMARK_RQST_COUNT=$4
+fi
+
+if [[ -n $5 ]]; then
+  BENCHMARK_CONCURRENCY_COUNT=$5
+fi
+
 REL_DIR=$(dirname $0)
 ROOT_DIR=`cd "${REL_DIR}/.."; pwd`
 echo "ROOT_DIR=${ROOT_DIR}"
 SCRIPT_DIR=${ROOT_DIR}/ghost-bench
 GHOSTJS_DIR=${WORKLOAD_DIR}/ghostjs-repo/
 ghostjs_mysql_dump_file="$GHOSTJS_DIR/../ghost-db.mysql"
-BENCHMARK_RQST_COUNT=2000
-DRIVER_URL="http://127.0.0.1:8013/new-world-record-with-apache-spark/"
 
 check_pre_requisite $RESOURCE_DIR
 EXIT_STATUS=0
@@ -359,6 +368,9 @@ SERVER_CPU_STAT_FILE=$LOGDIR_TEMP/server_cpu.txt
 ARCHIVE_DIR=$RESULTSDIR/$CUR_DATE
 
 optional DRIVERHOST
+optional BENCHMARK_RQST_COUNT 2000
+optional BENCHMARK_CONCURRENCY_COUNT 1
+optional DRIVER_URL "http://127.0.0.1:8013/new-world-record-with-apache-spark/"
 optional NODE_APP_MODE "production"
 optional NODE_FILE index.js
 optional CLUSTER_MODE false
@@ -422,9 +434,9 @@ echo -n "Pre run Footprint in KB : $pre"
 # Start the client driver command
 # Start client
 echo -e "\nStart of warming up the server with 1000 requests"
-start_client 1000 /tmp/warmup-$TEST_NAME
+start_client 1000 1 /tmp/warmup-$TEST_NAME
 echo -n "Benchmark start with $BENCHMARK_RQST_COUNT requests"
-(start_client $BENCHMARK_RQST_COUNT $RESULTSLOG) &
+(start_client $BENCHMARK_RQST_COUNT $BENCHMARK_CONCURRENCY_COUNT $RESULTSLOG) &
 
 # Collect CPU statistics
 # wait for 5 seconds for client driver to re-start
