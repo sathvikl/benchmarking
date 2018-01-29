@@ -17,12 +17,12 @@ start_mysql_container() {
     echo -e "$container_name already exists, deleting the image\n"
     sudo docker stop $container_name; sudo docker rm -v $container_name;  
   fi 
-  if [[ $(nc -z 127.0.0.1 3306; echo $?) -eq 0 ]]; then
-    echo -e "Port 3306 is in use, cannot proceed from here."
+  if [[ $(nc -z 127.0.0.1 3000; echo $?) -eq 0 ]]; then
+    echo -e "Port 3000 is in use, cannot proceed from here."
     return 0
   fi
   
-  sudo docker run --cpuset-cpus=$cpu_assign -p 3306:3306 --name=$container_name --env="MYSQL_ROOT_PASSWORD=testdb" -d mysql:5.7.21
+  sudo docker run --cpuset-cpus=$cpu_assign -p 3000:3306 --name=$container_name --env="MYSQL_ROOT_PASSWORD=testdb" -d mysql:5.7.21
   if [[ -n $(sudo docker ps | grep $container_name) ]]; then 
     echo -e "Docker: $container_name created..\n"  
   else
