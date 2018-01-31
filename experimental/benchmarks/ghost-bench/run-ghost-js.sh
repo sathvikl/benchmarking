@@ -3,7 +3,7 @@
 
 
 function usage() {
-  echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload> <timeout (Optional)>"
+  echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload>"
   echo "Currently this script will run Ghost.js and mysql container, with the affinities as follows:"
   echo "Node : $(echo ${NODE_AFFINITY})"
   echo "MySQL : $(echo docker --cpuset-cpus=${MYSQL_AFFINITY})"
@@ -324,16 +324,12 @@ start=`date +%s`
 #set locations so we don't end up with lots of hard coded bits throughout script
 RESOURCE_DIR=`readlink -f $1`  ### This is where binarires like ab, yarn, npm are located
 WORKLOAD_DIR=`readlink -f $2`  
+
 if [[ -n $3 ]]; then
-  test_timeout=$3
+  BENCHMARK_RQST_COUNT=$3
 fi
-
 if [[ -n $4 ]]; then
-  BENCHMARK_RQST_COUNT=$4
-fi
-
-if [[ -n $5 ]]; then
-  BENCHMARK_CONCURRENCY_COUNT=$5
+  BENCHMARK_CONCURRENCY_COUNT=$4
 fi
 
 REL_DIR=$(dirname $0)
@@ -383,7 +379,6 @@ optional test_timeout 600
 NODE_SERVER=$(hostname -s)
 echo -e "RESULTSDIR: $RESULTSDIR"
 echo -e "RESULTSLOG: $RESULTSLOG"
-echo -e "TIMEOUT: $TIMEOUT"
 echo -e "NODE_SERVER: $NODE_SERVER"
 echo -e "PORT: $PORT"
 echo -e "NETWORKTYPE: $NETWORKTYPE"
