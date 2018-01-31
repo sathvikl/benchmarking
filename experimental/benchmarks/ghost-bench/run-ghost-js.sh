@@ -3,7 +3,7 @@
 
 
 function usage() {
-  echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload>"
+  echo "USAGE: $0 <Resource dir name (contains ab, yarn et.al)> <Github top-level dir-name containing the workload> [URL request count] [concurrency count]"
   echo "Currently this script will run Ghost.js and mysql container, with the affinities as follows:"
   echo "Node : $(echo ${NODE_AFFINITY})"
   echo "MySQL : $(echo docker --cpuset-cpus=${MYSQL_AFFINITY})"
