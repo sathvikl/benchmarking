@@ -81,10 +81,9 @@ function on_exit()
   stop_node_process
   stop_mysql_server_container
   archive_files
-  echo -e "Kill timeout monitor function with PID: $PID_timeout_monitor_function"  
-  kill $PID_timeout_monitor_function
+  echo -e "PIDS of jobs to kill $(jobs -p)"
+  kill $(jobs -p)
   exit $EXIT_STATUS 
-  echo -e "$SCRIPT exit completed"
 }
 
 function timestamp()
